@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-require "pg"
+require "sequel"
 
-class DatabasePersistence
+class SequelPersistence
   def initialize(logger)
-    @db = PG.connect(dbname: "todos")
-    @logger = logger
+    @db = Sequel.connect("postgres://localhost/todos")
+    @db.loggers << logger
   end
 
   def find_list(id)
@@ -25,21 +25,16 @@ class DatabasePersistence
   end
 
   def all_lists
-    sql = <<~SQL
-      SELECT lists.*,
-        COUNT(todos.id) AS todos_count,
-        COUNT(NULLIF(todos.completed, true)) AS todos_remaining_count
-        FROM lists
-        LEFT JOIN todos ON list_id = lists.id
-        GROUP BY lists.id
-        ORDER BY lists.name;
-    SQL
-
-    result = query(sql)
-
-    result.map do |tuple|
-      tuple_to_list_hash(tuple)
-    end
+    @db[:lists] .left_join(:todos, list_id: :id)
+                .select_all(:lists)
+                .select_append do
+                  [count(todos__id)
+                    .as(todos_count),
+                   count(nullif(todos__completed, true))
+                     .as(todos_remaining_count)]
+                end
+                .group(:lists__id)
+                .order(:lists__name)
   end
 
   def create_new_list(list_name)

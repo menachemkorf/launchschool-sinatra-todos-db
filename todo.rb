@@ -1,10 +1,8 @@
-# rubocop:disable Style/StringLiterals
-
 require "sinatra"
 require "sinatra/content_for"
 require "tilt/erubis"
 
-require_relative "database_persistence"
+require_relative "sequel_persistence"
 
 configure do
   enable :sessions
@@ -14,7 +12,7 @@ end
 
 configure(:development) do
   require "sinatra/reloader"
-  also_reload "database_persistence.rb"
+  also_reload "sequel_persistence.rb"
 end
 
 helpers do
@@ -71,7 +69,7 @@ def error_for_todo(name)
 end
 
 before do
-  @storage = DatabasePersistence.new(logger)
+  @storage = SequelPersistence.new(logger)
 end
 
 get "/" do
